@@ -260,23 +260,87 @@ function getV6(svc) {
   } catch (e) { return 'Automatic'; }
 }
 
+/* HTTP CONNECT proxy that forwards to the engine's SOCKS5 (remote DNS) */
+const net = require('net');
+let httpProxy = null;
+function snipConnectRequest(host, port) {
+  const b = Buffer.from(host);
+  const out = Buffer.alloc(4 + 1 + b.length + 2);
+  out[0] = 0x05; out[1] = 0x01; out[2] = 0x00;
+  if (/^[0-9.]+$/.test(host) && b.length === 4) { out[3] = 0x01; b.copy(out, 4); out.writeUInt16BE(port, 8); return out; }
+  if (host.includes(':')) { out[3] = 0x04; out[6] = 0xff; out[7] = 0xff; out[8] = 0xff; out[9] = 0xff; out.writeUInt16BE(port, 10); return out; }
+  out[3] = 0x03; out[4] = b.length; b.copy(out, 5); out.writeUInt16BE(port, 5 + b.length); return out;
+}
+function startHttpProxy(port) {
+  if (httpProxy) return;
+  httpProxy = net.createServer((src) => {
+    let buf = '';
+    let rejected = false;
+    src.on('data', (d) => {
+      if (rejected) return;
+      buf += d;
+      const idx = buf.indexOf('\r\n\r\n');
+      if (idx < 0) { if (buf.length > 65536) { rejected = true; src.destroy(); } return; }
+      const head = buf.slice(0, idx);
+      const m = head.match(/^CONNECT\s+(\[?[^\s:\]]+\]?):(\d+)\s+HTTP\/1\.[01]/);
+      if (!m) { rejected = true; src.end('HTTP/1.1 400 Bad Request\r\n\r\n'); return; }
+      let host = m[1];
+      if (host.startsWith('[') && host.endsWith(']')) host = host.slice(1, -1);
+      const portTwo = parseInt(m[2]);
+      const socks = net.connect(1819, '127.0.0.1');
+      let stage = 0;
+      const abort = (msg) => { try { src.end(msg); } catch (e) {} socks.destroy(); };
+      socks.setTimeout(12000, () => { socks.destroy(); abort('HTTP/1.1 502 Bad Gateway\r\n\r\n'); });
+      socks.on('connect', () => socks.write(Buffer.from([0x05, 0x01, 0x00])));
+      socks.on('data', (sbt) => {
+        if (stage === 0) {
+          stage = 1;
+          if (sbt.length < 2 || sbt[1] !== 0x00) { socks.destroy(); abort('HTTP/1.1 502 Bad Gateway\r\n\r\n'); return; }
+          socks.write(snipConnectRequest(host, portTwo));
+        } else if (stage === 1) {
+          if (sbt.length < 3 || sbt[1] !== 0x00) { socks.destroy(); abort('HTTP/1.1 502 Bad Gateway\r\n\r\n'); return; }
+          src.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+          socks.removeAllListeners('data');
+          src.removeAllListeners('data');
+          src.pipe(socks); socks.pipe(src);
+        }
+      });
+      const killsrc = () => { try { socks.destroy(); } catch (e) {} };
+      socks.on('error', () => { try { src.destroy(); } catch (e) {} });
+      src.on('error', killsrc); src.on('close', killsrc); socks.on('close', () => { try { src.destroy(); } catch (e) {} });
+    });
+  });
+  httpProxy.on('error', (e) => { if (e.code !== 'EADDRINUSE') console.error('http proxy error', e); });
+  httpProxy.listen(port, '127.0.0.1');
+}
+function stopHttpProxy() { if (httpProxy) { try { httpProxy.close(); } catch (e) {} httpProxy = null; } }
+
 async function proxyState() {
   const svc = serviceName();
   const g = {};
-  const checks = [['web', '-getwebproxy'], ['secure', '-getsecurewebproxy'], ['socks', '-getsocksfirewallproxy']];
-  for (const [k, cmd] of checks) {
+  const checks = [['web', '-getwebproxy', 1820], ['secure', '-getsecurewebproxy', 1820], ['socks', '-getsocksfirewallproxy', 1819]];
+  for (const [k, cmd, port] of checks) {
     try {
       const o = execSync(`networksetup ${cmd} "${svc}"`, { timeout: 10000 }).toString();
-      g[k] = /^Enabled: Yes/im.test(o) && /Server:\s*127\.0\.0\.1/.test(o) && /Port:\s*1819/.test(o);
+      g[k] = /^Enabled: Yes/im.test(o) && /Server:\s*127\.0\.0\.1/.test(o) && new RegExp(`Port:\\s*${port}`).test(o);
     } catch (e) { g[k] = false; }
   }
   g.v6off = getV6(svc) === 'Off';
   return g;
 }
 
+function v6StoreFile() { return path.join(app.getPath('userData'), 'engine', 'v6prior.txt'); }
+function v6LoadPrior() {
+  try {
+    if (v6PriorSaved) return;
+    if (fs.existsSync(v6StoreFile())) v6PriorSaved = fs.readFileSync(v6StoreFile(), 'utf8').trim() || null;
+  } catch (e) {}
+}
+
 async function setSystemProxy(on) {
   const svc = serviceName();
   const s = "'" + svc + "'";
+  if (on) v6LoadPrior();
   const st = await proxyState();
   const needProxy = on ? !(st.web && st.secure && st.socks) : (st.web || st.secure || st.socks);
   const curV6 = getV6(svc);
@@ -284,8 +348,8 @@ async function setSystemProxy(on) {
   if (needProxy) {
     cmds.push(...(on
       ? [
-          `networksetup -setwebproxy ${s} 127.0.0.1 1819`,
-          `networksetup -setsecurewebproxy ${s} 127.0.0.1 1819`,
+          `networksetup -setwebproxy ${s} 127.0.0.1 1820`,
+          `networksetup -setsecurewebproxy ${s} 127.0.0.1 1820`,
           `networksetup -setsocksfirewallproxy ${s} 127.0.0.1 1819`,
         ]
       : [
@@ -295,10 +359,15 @@ async function setSystemProxy(on) {
         ]));
   }
   if (on) {
-    if (curV6 !== 'Off') { v6PriorSaved = curV6; cmds.push(`networksetup -setv6off ${s}`); }
+    if (curV6 !== 'Off') {
+      v6PriorSaved = curV6;
+      try { fs.writeFileSync(v6StoreFile(), curV6); } catch (e) {}
+      cmds.push(`networksetup -setv6off ${s}`);
+    }
   } else {
     if (v6PriorSaved && v6PriorSaved !== curV6) cmds.push(`networksetup -setv6${v6PriorSaved.toLowerCase()} ${s}`);
     v6PriorSaved = null;
+    try { fs.unlinkSync(v6StoreFile()); } catch (e) {}
   }
   if (!cmds.length) return { ok: true, already: true, elevated: false }; // no dialog needed
   // try unprivileged first; fall back to admin
@@ -339,6 +408,7 @@ ipcMain.handle('engine-start', async (_, s) => {
   }
   const tr = await exitTrace(bind.split(':').pop() || 1819);
   const geo = lookupGeo(tr.ip || null);
+  startHttpProxy(1820);
   return { success: true, exitIp: tr.ip || null, colo: tr.colo || null, warp: tr.warp || null, bind, cc: geo.cc, country: geo.country };
 });
 function enginesilentlyDied(code) {
@@ -347,6 +417,7 @@ function enginesilentlyDied(code) {
 
 ipcMain.handle('engine-stop', async () => {
   engine.exiting = true;
+  stopHttpProxy();
   if (engine.pid) { try { process.kill(engine.pid, 'SIGTERM'); } catch (e) {} }
   try { execSync('pkill -f "Resources/aether" 2>/dev/null', { stdio: 'ignore' }); } catch (e) {}
   engine.pid = null;
