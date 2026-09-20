@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aether VPN</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #0a0a2e 0%, #1a1a4e 50%, #0a0a2e 100%);
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+.header {
+  background: rgba(255,255,255,0.05);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.header h1 {
+  font-size: 20px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.status-badge { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.status-connected { background: #10b981; color: #fff; }
+.status-disconnected { background: #ef4444; color: #fff; }
+.status-unknown { background: #6b7280; color: #fff; }
+.main { padding: 24px; max-width: 1000px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 20px;
+}
+.card h2 { font-size: 14px; color: #a0a0a0; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.server-list { max-height: 250px; overflow-y: auto; }
+.server-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; margin: 3px 0; background: rgba(255,255,255,0.03);
+  border-radius: 8px; cursor: pointer; transition: all 0.2s;
+}
+.server-item:hover { background: rgba(102, 126, 234, 0.2); }
+.server-item.selected { background: rgba(102, 126, 234, 0.4); border: 1px solid #667eea; }
+.server-name { font-weight: 600; font-size: 14px; }
+.server-region { font-size: 11px; color: #888; }
+.btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; width: 100%; }
+.btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
+.btn-danger { background: #ef4444; color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-secondary { background: rgba(255,255,255,0.1); color: #e0e0e0; }
+.btn-secondary:hover { background: rgba(255,255,255,0.15); }
+.btn-green { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+.login-section { margin-top: 8px; }
+.login-input { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 8px; outline: none; }
+.login-input:focus { border-color: #667eea; }
+.log-row { padding: 6px 10px; margin: 3px 0; background: rgba(0,0,0,0.2); border-radius: 5px; font-family: 'SF Mono', monospace; font-size: 11px; color: #a0a0a0; max-height: 180px; overflow-y: auto; }
+#connectBtn { background: linear-gradient(135deg, #10b981, #059669); margin-top: 10px; }
+#connectBtn.connected { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+.settings-label { color: #a0a0a0; font-size: 13px; }
+.toggle { width: 40px; height: 22px; background: rgba(255,255,255,0.1); border-radius: 11px; cursor: pointer; position: relative; transition: background 0.3s; }
+.toggle.active { background: linear-gradient(135deg, #667eea, #764ba2); }
+.toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.3s; }
+.toggle.active::after { transform: translateX(18px); }
+.info-bar { text-align: center; padding: 8px; color: #666; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🛡️ Aether VPN</h1>
+  <span id="statusBadge" class="status-badge status-unknown">Disconnected</span>
+</div>
+<div class="main">
+  <div class="grid">
+    <div class="card">
+      <h2>Servers</h2>
+      <div id="serverList" class="server-list">Loading servers...</div>
+    </div>
+    <div class="card">
+      <h2>Quick Connect</h2>
+      <div class="login-section">
+        <input type="email" id="emailInput" class="login-input" placeholder="Enter your email...">
+        <button class="btn btn-secondary" onclick="doLogin()" style="margin-bottom:8px">Login</button>
+        <button id="connectBtn" class="btn btn-green" onclick="toggleConnect()">Connect</button>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn btn-secondary" onclick="doKeys()" style="margin-bottom:6px">Generate Keys</button>
+        <button class="btn btn-secondary" onclick="doStatus()">Check Status</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Activity Log</h2>
+    <div id="logArea" class="log-row">Waiting for commands...</div>
+  </div>
+  <div class="card">
+    <h2>Settings</h2>
+    <div class="settings-row"><span class="settings-label">Auto-connect</span><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
+    <div class="settings-row"><span class="settings-label">Kill switch</span><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
+    <div class="settings-row"><span class="settings-label">DNS blocking</span><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
+  </div>
+  <div class="info-bar">Aether VPN v3.8-beta.2 | Built for macOS | Powered by Electron</div>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "name": "aether-vpn-macos",
+  "version": "1.0.0",
+  "description": "Aether VPN — Secure, Fast, Private VPN for macOS with beautiful Electron GUI",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "dist": "electron-builder --mac --dir"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.aether.vpn",
+    "productName": "Aether VPN",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg", "zip"]
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.html",
+      "renderer.js",
+      "icon.png",
+      "avpn",
+      "app/**/*",
+      "public/**/*",
+      "node_modules/**/*"
+    ]
+  }
+}
