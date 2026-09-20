@@ -170,6 +170,19 @@ body {
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+#appPicker { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 50; display: flex; align-items: center; justify-content: center; }
+@media (prefers-color-scheme: light){ #appPicker { background: rgba(0,0,0,0.4); } }
+.picker-wrap { width: 460px; max-width: 90vw; max-height: 70vh; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; }
+.picker-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; font-weight: 700; border-bottom: 1px solid var(--border); }
+.picker-close { cursor: pointer; font-size: 22px; color: var(--muted); }
+.picker-list { overflow-y: auto; padding: 8px 0; }
+.picker-app { display: flex; align-items: center; gap: 10px; padding: 10px 18px; cursor: pointer; }
+.picker-app:hover { background: rgba(255,255,255,0.04); }
+.picker-app input { width: 16px; height: 16px; accent-color: var(--blue600); }
+.picker-foot { border-top: 1px solid var(--border); padding: 12px 18px; }
+.picker-foot .action-btn { margin-top: 0; }
+
 </style>
 </head>
 <body>
@@ -183,23 +196,23 @@ body {
   </div>
   <div class="nav-item active" data-page="connect" onclick="showPage('connect')">
     <svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
-    Connect
+    <span data-i18n="nav.connect">Connect</span>
   </div>
   <div class="nav-item" data-page="configurations" onclick="showPage('configurations')">
     <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-8V7h4v2h-4v2h2V9h4V7h-4V5h-2z"/></svg>
-    Configurations
+    <span data-i18n="nav.configurations">Configurations</span>
   </div>
   <div class="nav-item" data-page="settings" onclick="showPage('settings')">
     <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-    Settings
+    <span data-i18n="nav.settings">Settings</span>
   </div>
   <div class="nav-item" data-page="about" onclick="showPage('about')">
     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-    About
+    <span data-i18n="nav.about">About</span>
   </div>
   <div class="drawer-footer" onclick="openTelegram()">
     <svg viewBox="0 0 24 24"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
-    Firstham on Telegram
+    <span data-i18n="nav.telegram">Firstham on Telegram</span>
   </div>
 </div>
 
@@ -217,13 +230,13 @@ body {
   <div class="page active" id="page-connect">
     <div class="connect-wrap">
       <button class="orb" id="connectBtn" onclick="toggleConnect()">
-        <span class="orb-label" id="orbLabel">CONNECT</span>
+        <span class="orb-label" id="orbLabel" data-i18n="connect.orb.connect">CONNECT</span>
       </button>
       <div class="status-pill">
         <div class="dot off" id="statusDot"></div>
-        <span class="status-text" id="statusText">Aether Ready</span>
+        <span class="status-text" id="statusText" data-i18n="connect.status.ready">Aether Ready</span>
       </div>
-      <div class="tap-hint" id="tapHint">Tap to secure</div>
+      <div class="tap-hint" id="tapHint" data-i18n="connect.tap">Tap to secure</div>
 
       <div class="progress-area">
         <div class="progress"><div class="bar" id="progressBar"></div></div>
@@ -231,47 +244,47 @@ body {
 
       <div class="metrics hidden" id="metricsBox">
         <div class="metric">
-          <div class="m-label">↓ Download</div>
+          <div class="m-label" data-i18n="connect.download">↓ Download</div>
           <div class="m-value" id="downloadValue">--</div>
         </div>
         <div class="metric">
-          <div class="m-label">↑ Upload</div>
+          <div class="m-label" data-i18n="connect.upload">↑ Upload</div>
           <div class="m-value" id="uploadValue">--</div>
         </div>
         <div class="metric">
-          <div class="m-label">Ping</div>
+          <div class="m-label" data-i18n="connect.ping">Ping</div>
           <div class="m-value blue" id="pingValue">--</div>
         </div>
       </div>
 
       <div class="node-box">
-        <div class="nb-label">NODE</div>
+        <div class="nb-label" data-i18n="connect.node">NODE</div>
         <select id="nodeSelect" onchange="nodeChanged()">
           <option value="">Loading servers...</option>
         </select>
       </div>
 
-      <div class="msg" id="connectMsg">Finding a gateway…</div>
+      <div class="msg" id="connectMsg" data-i18n="connect.msg">Finding a gateway…</div>
     </div>
   </div>
 
   <!-- ===== CONFIGURATIONS PAGE ===== -->
   <div class="page" id="page-configurations">
-    <div class="section-title">Configurations</div>
-    <div class="section-sub">Connection mode, protocol and tunnel behaviour</div>
+    <div class="section-title" data-i18n="config.title">Configurations</div>
+    <div class="section-sub" data-i18n="config.sub">Connection mode, protocol and tunnel behaviour</div>
 
     <div class="field">
-      <div class="field-label">Connection mode</div>
+      <div class="field-label" data-i18n="config.mode">Connection mode</div>
       <div class="group" id="modeGroup">
-        <button data-mode="vpn" class="active" onclick="setMode('vpn')">Device VPN</button>
-        <button data-mode="proxy" onclick="setMode('proxy')">SOCKS5 proxy</button>
-        <button data-mode="smart" onclick="setMode('smart')">Smart Connect</button>
+        <button data-mode="vpn" class="active" onclick="setMode('vpn')" data-i18n="config.mode.vpn">Device VPN</button>
+        <button data-mode="proxy" onclick="setMode('proxy')" data-i18n="config.mode.proxy">SOCKS5 proxy</button>
+        <button data-mode="smart" onclick="setMode('smart')" data-i18n="config.mode.smart">Smart Connect</button>
       </div>
       <div class="field-sub" id="modeSummary">Test every protocol and choose the fastest reliable route.</div>
     </div>
 
     <div class="field">
-      <div class="field-label">Protocol</div>
+      <div class="field-label" data-i18n="config.protocol">Protocol</div>
       <select class="select-styled" id="protocolInput" onchange="saveSettings()">
         <option>MASQUE</option>
         <option>WireGuard</option>
@@ -281,7 +294,7 @@ body {
     </div>
 
     <div class="field">
-      <div class="field-label">Scan mode</div>
+      <div class="field-label" data-i18n="config.scan">Scan mode</div>
       <select class="select-styled" id="scanInput" onchange="saveSettings()">
         <option>Balanced</option>
         <option>Turbo (recommended)</option>
@@ -292,7 +305,7 @@ body {
     </div>
 
     <div class="field" id="transportField">
-      <div class="field-label">MASQUE transport</div>
+      <div class="field-label" data-i18n="config.transport">MASQUE transport</div>
       <select class="select-styled" id="transportInput" onchange="saveSettings()">
         <option>HTTP/3 (QUIC)</option>
         <option selected>HTTP/2 (TCP, recommended)</option>
@@ -301,23 +314,23 @@ body {
 
     <div class="switch-row">
       <div>
-        <div class="sw-txt">Auto Reconnect</div>
-        <div class="sw-sub">Recover automatically after a temporary connection failure</div>
+        <div class="sw-txt" data-i18n="config.reconnect">Auto Reconnect</div>
+        <div class="sw-sub" data-i18n="config.reconnect.sub">Recover automatically after a temporary connection failure</div>
       </div>
       <div class="switch on" id="reconnectSwitch" onclick="toggleSwitch(this,'quickReconnect')"></div>
     </div>
 
     <div class="switch-row">
       <div>
-        <div class="sw-txt">Auto connect at start</div>
-        <div class="sw-sub">Connect with the saved configuration when Aether opens</div>
+        <div class="sw-txt" data-i18n="config.autostart">Auto connect at start</div>
+        <div class="sw-sub" data-i18n="config.autostart.sub">Connect with the saved configuration when Aether opens</div>
       </div>
       <div class="switch" id="autoConnectSwitch" onclick="toggleSwitch(this,'autoConnectAtStart')"></div>
     </div>
 
     <div class="switch-row">
       <div>
-        <div class="sw-txt">Connection from LAN</div>
+        <div class="sw-txt" data-i18n="config.lan">Connection from LAN</div>
         <div class="sw-sub" id="lanSub">Disabled</div>
       </div>
       <div class="switch" id="lanSwitch" onclick="toggleSwitch(this,'lanEnabled')"></div>
@@ -327,27 +340,27 @@ body {
 
     <div class="switch-row">
       <div>
-        <div class="sw-txt" style="font-size:17px">Split Tunneling</div>
-        <div class="sw-sub">Choose which apps use the Aether connection.</div>
+        <div class="sw-txt" style="font-size:17px" data-i18n="config.split">Split Tunneling</div>
+        <div class="sw-sub" data-i18n="config.split.sub">Choose which apps use the Aether connection.</div>
       </div>
       <div class="switch" id="splitSwitch" onclick="toggleSwitch(this,'splitEnabled')"></div>
     </div>
     <div id="splitContainer" class="hidden">
       <div class="field">
-        <div class="field-label">Routing mode</div>
+        <div class="field-label" data-i18n="config.routing">Routing mode</div>
         <div class="group" id="routingGroup">
-          <button data-routing="include" class="active" onclick="setRouting('include')">Include Apps</button>
-          <button data-routing="exclude" onclick="setRouting('exclude')">Exclude Apps</button>
+          <button data-routing="include" class="active" onclick="setRouting('include')" data-i18n="config.routing.include">Include Apps</button>
+          <button data-routing="exclude" onclick="setRouting('exclude')" data-i18n="config.routing.exclude">Exclude Apps</button>
         </div>
         <div class="field-sub" id="selectedAppsCount">0 apps selected</div>
       </div>
-      <button class="action-btn" onclick="toast('App picker (simulated)')">Select Apps</button>
+      <button class="action-btn" onclick="openAppPicker()" data-i18n="config.apps">Select Apps</button>
     </div>
 
     <button class="text-btn" id="advancedToggle" onclick="toggleAdvanced()">Show advanced ▾</button>
     <div id="advancedContainer" class="hidden">
       <div class="field">
-        <div class="field-label">IP scan</div>
+        <div class="field-label" data-i18n="config.ipscan">IP scan</div>
         <select class="select-styled" id="ipInput" onchange="saveSettings()">
           <option>IPv4 (recommended)</option>
           <option>IPv6</option>
@@ -355,7 +368,7 @@ body {
         </select>
       </div>
       <div class="field">
-        <div class="field-label">Obfuscation</div>
+        <div class="field-label" data-i18n="config.obfuscation">Obfuscation</div>
         <select class="select-styled" id="obfuscationInput" onchange="saveSettings()">
           <option>Firewall (recommended)</option>
           <option>GFW</option>
@@ -365,47 +378,47 @@ body {
         </select>
       </div>
       <div class="field">
-        <div class="field-label">Local SOCKS5 address</div>
-        <input type="text" class="select-styled" id="socksInput" value="127.0.0.1:1819" onchange="saveSettings()">
+        <div class="field-label" data-i18n="config.socks">Local SOCKS5 address</div>
+        <input type="text" class="select-styled" id="socksInput" value="127.0.0.1:1819" onchange="saveSettings()" data-i18n-ph="config.socks.ph">
       </div>
       <div class="field">
-        <div class="field-label">Custom endpoint (optional)</div>
-        <input type="text" class="select-styled" id="peerInput" value="" placeholder="optional" onchange="saveSettings()">
+        <div class="field-label" data-i18n="config.endpoint">Custom endpoint (optional)</div>
+        <input type="text" class="select-styled" id="peerInput" value="" onchange="saveSettings()" placeholder="optional" data-i18n-ph="config.endpoint.ph">
       </div>
       <div class="field">
-        <div class="field-label">VPN MTU</div>
+        <div class="field-label" data-i18n="config.mtu">VPN MTU</div>
         <div class="group" id="mtuModeGroup">
-          <button data-mtu="automatic" class="active" onclick="setMtuMode('automatic')">Automatic</button>
-          <button data-mtu="manual" onclick="setMtuMode('manual')">Manual</button>
+          <button data-mtu="automatic" class="active" onclick="setMtuMode('automatic')" data-i18n="config.mtu.auto">Automatic</button>
+          <button data-mtu="manual" onclick="setMtuMode('manual')" data-i18n="config.mtu.manual">Manual</button>
         </div>
         <input type="number" class="select-styled hidden" id="mtuInput" value="1360" min="1280" max="1500" onchange="saveSettings()">
         <div class="field-sub" id="mtuSummary">Safe default: 1360</div>
       </div>
       <div class="switch-row">
         <div>
-          <div class="sw-txt">Private DNS routing</div>
-          <div class="sw-sub">Route DNS requests through the tunnel</div>
+          <div class="sw-txt" data-i18n="config.dns">Private DNS routing</div>
+          <div class="sw-sub" data-i18n="config.dns.sub">Route DNS requests through the tunnel</div>
         </div>
         <div class="switch on" id="dnsSwitch" onclick="toggleSwitch(this,'dnsLeak')"></div>
       </div>
       <div class="switch-row">
         <div>
-          <div class="sw-txt">Fail closed on tunnel errors</div>
-          <div class="sw-sub">Keep VPN routes blocked if Aether unexpectedly stops</div>
+          <div class="sw-txt" data-i18n="config.kill">Fail closed on tunnel errors</div>
+          <div class="sw-sub" data-i18n="config.kill.sub">Keep VPN routes blocked if Aether unexpectedly stops</div>
         </div>
         <div class="switch" id="killswitchSwitch" onclick="toggleSwitch(this,'killSwitch')"></div>
       </div>
-      <button class="text-btn" onclick="resetDefaults()">Reset defaults</button>
+      <button class="text-btn" onclick="resetDefaults()" data-i18n="config.reset">Reset defaults</button>
     </div>
   </div>
 
   <!-- ===== SETTINGS PAGE ===== -->
   <div class="page" id="page-settings">
-    <div class="section-title">Settings</div>
-    <div class="section-sub">How should the Aether app behave and look?</div>
+    <div class="section-title" data-i18n="settings.title">Settings</div>
+    <div class="section-sub" data-i18n="settings.sub">How should the Aether app behave and look?</div>
 
     <div class="field">
-      <div class="field-label">Theme</div>
+      <div class="field-label" data-i18n="settings.theme">Theme</div>
       <select class="select-styled" id="themeInput" onchange="setTheme()">
         <option>System default</option>
         <option>Light</option>
@@ -413,52 +426,52 @@ body {
       </select>
     </div>
     <div class="field">
-      <div class="field-label">Language</div>
-      <select class="select-styled" id="languageInput" onchange="saveSettings()">
+      <div class="field-label" data-i18n="settings.lang">Language</div>
+      <select class="select-styled" id="languageInput" onchange="setLanguage()">
         <option selected>English</option>
         <option>فارسی</option>
       </select>
     </div>
 
     <div class="divider"></div>
-    <div class="field-label">Notifications</div>
-    <div class="field-sub">Manage VPN and update notifications</div>
-    <button class="action-btn" onclick="toast('Notification settings opened')">Manage Notifications</button>
+    <div class="field-label" data-i18n="settings.notif">Notifications</div>
+    <div class="field-sub" data-i18n="settings.notif.sub">Manage VPN and update notifications</div>
+    <button class="action-btn" onclick="toast(t('settings.notif.btn.t'))" data-i18n="settings.notif.btn">Manage Notifications</button>
 
-    <div style="margin-top:24px" class="field-label">Quick Settings</div>
-    <div class="field-sub">Add the Aether VPN tile for fast connect and disconnect</div>
-    <button class="action-btn" onclick="toast('Quick Settings tile request opened')">Add Aether VPN Tile</button>
+    <div style="margin-top:24px" class="field-label" data-i18n="settings.quick">Quick Settings</div>
+    <div class="field-sub" data-i18n="settings.quick.sub">Add the Aether VPN tile for fast connect and disconnect</div>
+    <button class="action-btn" onclick="toast(t('settings.quick.btn.t'))" data-i18n="settings.quick.btn">Add Aether VPN Tile</button>
 
     <div class="divider"></div>
-    <div class="field-label">Aether VPN Updates</div>
-    <div class="info-row"><span class="k">Current version</span><span class="v">v2.1.1</span></div>
-    <div class="info-row"><span class="k">Latest available version</span><span class="v" id="latestVersion">Not checked</span></div>
-    <div class="info-row"><span class="k">Update status</span><span class="v" id="updateStatus">Not checked</span></div>
+    <div class="field-label" data-i18n="settings.updates">Aether VPN Updates</div>
+    <div class="info-row"><span class="k" data-i18n="settings.cur">Current version</span><span class="v">v2.1.1</span></div>
+    <div class="info-row"><span class="k" data-i18n="settings.latest">Latest available version</span><span class="v" id="latestVersion">Not checked</span></div>
+    <div class="info-row"><span class="k" data-i18n="settings.status">Update status</span><span class="v" id="updateStatus">Not checked</span></div>
     <div class="progress hidden" style="height:6px;margin-top:12px"><div class="bar" id="updateProgress"></div></div>
     <div class="switch-row">
       <div>
-        <div class="sw-txt">Automatic updates</div>
-        <div class="sw-sub">Check for and download verified updates automatically over any available network</div>
+        <div class="sw-txt" data-i18n="settings.autoupd">Automatic updates</div>
+        <div class="sw-sub" data-i18n="settings.autoupd.sub">Check for and download verified updates automatically over any available network</div>
       </div>
       <div class="switch on" id="autoUpdateSwitch" onclick="toggleSwitch(this,'autoUpdate')"></div>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="action-btn hidden" id="downloadUpdateBtn" onclick="toast('Download started')">Download update</button>
-      <button class="action-btn ghost" onclick="checkUpdates()">Check for updates</button>
+      <button class="action-btn hidden" id="downloadUpdateBtn" onclick="toast(t('settings.download.t'))" data-i18n="settings.download">Download update</button>
+      <button class="action-btn ghost" onclick="checkUpdates()" data-i18n="settings.check">Check for updates</button>
     </div>
 
     <div class="divider"></div>
-    <div class="field-label">Backup &amp; Restore</div>
+    <div class="field-label" data-i18n="settings.backup">Backup &amp; Restore</div>
     <div style="display:flex;gap:10px;margin-top:14px">
-      <button class="action-btn" onclick="toast('Settings backed up')">Backup settings</button>
-      <button class="action-btn ghost" onclick="toast('Restore settings')">Restore settings</button>
+      <button class="action-btn" onclick="backupSettings()" data-i18n="settings.backup.btn">Backup settings</button>
+      <button class="action-btn ghost" onclick="restoreSettings()" data-i18n="settings.restore.btn">Restore settings</button>
     </div>
 
     <div class="telegram-card" onclick="openTelegram()">
       <div class="tg-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg></div>
       <div>
-        <div class="tg-txt">Firstham on Telegram</div>
-        <div class="tg-sub">Updates, tips, and new releases from @hamvex.</div>
+        <div class="tg-txt" data-i18n="settings.telegram.t">Firstham on Telegram</div>
+        <div class="tg-sub" data-i18n="settings.telegram.sub">Updates, tips, and new releases from @hamvex.</div>
       </div>
     </div>
     <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:18px">v2.1.1</div>
@@ -472,17 +485,26 @@ body {
       <div class="ver">v2.1.1</div>
       <div class="link-list">
         <div class="link-item">
-          <div class="t">Original Project: Aether</div>
-          <div class="d">Based on the original Aether project by CluvexStudio.</div>
+          <div class="t" data-i18n="about.orig">Original Project: Aether</div>
+          <div class="d" data-i18n="about.orig.sub">Based on the original Aether project by CluvexStudio.</div>
           <div class="d"><a href="#" onclick="return false" style="pointer-events:none">https://github.com/CluvexStudio/Aether</a></div>
         </div>
         <div class="link-item" style="margin-top:18px">
-          <div class="t">Application: Aether VPN</div>
-          <div class="d">macOS application/interface developed for Aether.</div>
+          <div class="t" data-i18n="about.app">Application: Aether VPN</div>
+          <div class="d" data-i18n="about.app.sub">macOS application/interface developed for Aether.</div>
           <div class="d"><a href="#" onclick="return false" style="pointer-events:none">https://github.com/javadhamed-ctrl/Aether-VPN-MacOS-App</a></div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+
+<div id="appPicker" class="hidden">
+  <div class="picker-wrap">
+    <div class="picker-head"><span data-i18n="config.apps">Select Apps</span><span class="picker-close" onclick="closeAppPicker()">&times;</span></div>
+    <div class="picker-list" id="appPickerList"></div>
+    <div class="picker-foot"><button class="action-btn" onclick="closeAppPicker()" data-i18n="config.done">Done</button></div>
   </div>
 </div>
 
