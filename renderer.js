@@ -3,6 +3,7 @@ const { ipcRenderer } = require('electron');
 let state = 'disconnected';
 let page = 'connect';
 let region = null;
+let routing = null;
 let trafficTimer = null;
 let lastRx = null, lastTx = null;
 let dl = 0, ul = 0, ping = 0;
@@ -175,6 +176,10 @@ function renderAllDropdowns() { Object.keys(DROPDOWNS).forEach(renderDropdown); 
 
 document.addEventListener('DOMContentLoaded', () => {
   lang = localStorage.getItem('lang') || 'en';
+  if (localStorage.getItem('modeMigrated') !== '1') {
+    if ((localStorage.getItem('mode') || 'vpn') !== 'vpn') localStorage.setItem('mode', 'vpn');
+    localStorage.setItem('modeMigrated', '1');
+  }
   renderAllDropdowns();
   applyStoredSettings();
   showPage('connect');
@@ -222,6 +227,30 @@ function showPage(name) {
   document.getElementById('toolbar-title').textContent = titles[name];
 }
 
+/* ================= System routing status ================= */
+async function refreshRouting() {
+  const mode = localStorage.getItem('mode') || 'vpn';
+  if (state !== 'connected' || mode === 'proxy') { routing = null; updateRouting(); return; }
+  routing = await ipcRenderer.invoke('proxy-status');
+  updateRouting();
+}
+function updateRouting() {
+  const el = document.getElementById('routeInfo');
+  if (!el) return;
+  const mode = localStorage.getItem('mode') || 'vpn';
+  if (state !== 'connected') { el.textContent = ''; el.className = 'msg route-info'; return; }
+  if (mode === 'proxy') {
+    el.textContent = lang === 'fa' ? 'SOCKS فقط: اپلیکیشن‌ها باید به 127.0.0.1:1819 اشاره کنند' : 'SOCKS only: point apps at 127.0.0.1:1819';
+    el.className = 'msg route-info warn';
+  } else if (routing && routing.socks) {
+    el.textContent = lang === 'fa' ? 'مسیردهی سیستم: روشن · کل مک از تونل رد می‌شود' : 'System routing: ON · whole macOS goes through the tunnel';
+    el.className = 'msg route-info ok';
+  } else {
+    el.textContent = lang === 'fa' ? 'مسیردهی سیستم خاموش — دوباره Connect بزن' : 'System routing OFF — press Connect again';
+    el.className = 'msg route-info warn';
+  }
+}
+
 /* ================= Live exit region ================= */
 function updateRegion() {
   const el = document.getElementById('regionValue');
@@ -266,11 +295,11 @@ function connect() {
       updateRegion();
       let px = { ok: true };
       if (mode !== 'proxy') px = await ipcRenderer.invoke('proxy-on');
-      if (px && px.cancelled) {
-        toast('System proxy needs admin — enable SOCKS 127.0.0.1:1819 in Network settings');
-      }
+      if (px && px.cancelled) toast('System proxy needs admin — enable SOCKS 127.0.0.1:1819 in Network settings');
       setState('connected');
-      showRawMsg('Exit ' + (exitIp || '') + ' · ' + (r.colo || '') + ' · warp=' + (r.warp || r.warp === 'on' ? 'on' : 'off'));
+      await refreshRouting();
+      const routed = routing && routing.socks;
+      showRawMsg('Exit ' + (exitIp || '') + ' · ' + (r.colo || '') + (routed ? (lang === 'fa' ? ' · مسیر سیستم روشن' : ' · system routed') : ''));
       startTraffic();
     } else {
       setState('error');
@@ -286,7 +315,7 @@ async function disconnect() {
   if (mode !== 'proxy') await ipcRenderer.invoke('proxy-off');
   await ipcRenderer.invoke('engine-stop');
   setState('disconnected'); showProgress(false);
-  stopTraffic(); exitIp = null; region = null;
+  stopTraffic(); exitIp = null; region = null; routing = null; updateRouting();
   document.getElementById('exitInfo').textContent = '';
   document.getElementById('regionValue').textContent = '\u2014';
   showMsg('msg.tap');
@@ -300,6 +329,7 @@ async function checkStatus() {
     updateExitInfo();
     updateRegion();
     setState('connected'); startTraffic();
+    refreshRouting();
   }
 }
 
@@ -361,6 +391,7 @@ async function pollTraffic() {
     setState('error');
     showMsg('tunnel.error');
   }
+  await refreshRouting();
   const p = await ipcRenderer.invoke('engine-ping');
   if (p && p.success && p.ms) ping = p.ms;
   const e = await ipcRenderer.invoke('engine-exit-ip');
@@ -637,8 +668,9 @@ window.__verify = async function () {
   out.controls.theme = document.documentElement.style.getPropertyValue('--bg') === '#0a0f1e';
   document.getElementById('languageInput').value = 'English';
 
-  const btn = document.getElementById('connectBtn');
+  const prevMode = localStorage.getItem('mode') || 'vpn';
   localStorage.setItem('mode', 'proxy');
+  const btn = document.getElementById('connectBtn');
   btn.click();
   let waited = 0;
   while (state === 'starting' || state === 'scanning' || state === 'securing') {
@@ -656,9 +688,14 @@ window.__verify = async function () {
   out.connect.state = state;
   out.connect.ok = state === 'connected' && !!exitIp && !!region && !!region.colo;
   const t0 = document.getElementById('downloadValue').textContent;
-  await new Promise(r => setTimeout(r, 2200));
-  out.connect.trafficMoving = t0 !== document.getElementById('downloadValue').textContent
-    || document.getElementById('pingValue').textContent !== '--';
+  await new Promise(r => setTimeout(r, 4000));
+  const ta = await ipcRenderer.invoke('engine-traffic');
+  await new Promise(r => setTimeout(r, 2000));
+  const tb = await ipcRenderer.invoke('engine-traffic');
+  out.connect.trafficDrift = (ta && tb && ta.active && tb.active) ? Math.max(0, tb.rx - ta.rx) + Math.max(0, tb.tx - ta.tx) : -1;
+  out.connect.trafficMoving = out.connect.trafficDrift > 0 || document.getElementById('pingValue').textContent !== '--';
+  out.connect.pingShown = document.getElementById('pingValue').textContent;
+  out.connect.dlShown = t0;
   out.connect.trafficVisible = !document.getElementById('metricsBox').classList.contains('hidden');
 
   if (state === 'connected') { btn.click(); }
@@ -668,6 +705,7 @@ window.__verify = async function () {
   out.disconnect.msg = document.getElementById('connectMsg').textContent;
   out.disconnect.ok = out.disconnect.status === (lang === 'fa' ? 'آماده' : 'Aether Ready')
     && out.disconnect.msg === t('msg.tap');
+  localStorage.setItem('mode', prevMode); setMode(prevMode);
   return out;
 };
 function setLanguageTo(v) {

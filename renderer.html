@@ -96,6 +96,11 @@ body {
 .status-text { font-size: 14px; font-weight: 700; }
 .tap-hint { margin-top: 22px; color: var(--muted); font-size: 13px; }
 
+/* Routing status */
+.msg.route-info { margin-top: 6px; min-height: 16px; font-size: 12px; }
+.msg.route-info.ok { color: #3ddc84; }
+.msg.route-info.warn { color: #ffb74d; }
+
 /* Traffic / ping / node metrics */
 .metrics { display: flex; gap: 10px; margin-top: 26px; }
 .metric { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 10px; }
@@ -258,6 +263,7 @@ body {
       </div>
 
       <div class="msg exit-ip" id="exitInfo" style="margin-top:10px;min-height:16px;font-size:12px;color:var(--muted)"></div>
+      <div class="msg route-info" id="routeInfo"></div>
 
       <div class="node-box">
         <div class="nb-label" data-i18n="connect.region">EXIT REGION</div>

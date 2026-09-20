@@ -274,6 +274,19 @@ async function setSystemProxy(on) {
   }
 }
 
+ipcMain.handle('proxy-status', async () => {
+  const svc = serviceName();
+  const g = {};
+  const checks = [['web', '-getwebproxy'], ['secure', '-getsecurewebproxy'], ['socks', '-getsocksfirewallproxy']];
+  for (const [k, cmd] of checks) {
+    try {
+      const o = execSync(`networksetup ${cmd} "${svc}"`, { timeout: 10000 }).toString();
+      g[k] = /^Enabled: Yes/im.test(o) && /Server:\s*127\.0\.0\.1/.test(o) && /Port:\s*1819/.test(o);
+    } catch (e) { g[k] = false; }
+  }
+  return g;
+});
+
 ipcMain.handle('engine-start', async (_, s) => {
   if (engine.pid) { try { process.kill(engine.pid, 'SIGTERM'); } catch (e) {} }
   try { execSync('pkill -f "Resources/aether" 2>/dev/null', { stdio: 'ignore' }); } catch (e) {}
