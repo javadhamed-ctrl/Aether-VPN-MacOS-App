@@ -299,7 +299,8 @@ ipcMain.handle('engine-start', async (_, s) => {
     return { success: false, logTail: tail || 'engine failed to start' };
   }
   const tr = await exitTrace(bind.split(':').pop() || 1819);
-  return { success: true, exitIp: tr.ip || null, colo: tr.colo || null, warp: tr.warp || null, bind };
+  const geo = lookupGeo(tr.ip || null);
+  return { success: true, exitIp: tr.ip || null, colo: tr.colo || null, warp: tr.warp || null, bind, cc: geo.cc, country: geo.country };
 });
 function enginesilentlyDied(code) {
   process.send && process.send({ type: 'engine-exit', code });
@@ -318,7 +319,8 @@ ipcMain.handle('engine-status', async () => {
   const port = 1819;
   const tr = await exitTrace(port);
   const running = engine.pid !== null && tr.ip;
-  return { running, exitIp: running ? tr.ip : null, colo: running ? tr.colo : null, pid: engine.pid };
+  const geo = lookupGeo(tr.ip || null);
+  return { running, exitIp: running ? tr.ip : null, colo: running ? tr.colo : null, pid: engine.pid, cc: geo.cc, country: geo.country };
 });
 
 ipcMain.handle('engine-traffic', async () => {
@@ -329,9 +331,26 @@ ipcMain.handle('engine-traffic', async () => {
 
 ipcMain.handle('engine-ping', async () => await httpLatency(1819));
 
+let geoCache = { ip: null, at: 0, cc: null, country: null };
+function lookupGeo(ip) {
+  if (!ip) return { cc: null, country: null };
+  if (geoCache.ip === ip && Date.now() - geoCache.at < 30000) return { cc: geoCache.cc, country: geoCache.country };
+  try {
+    const out = execSync(`curl -s --max-time 8 "https://ipwho.is/${encodeURIComponent(ip)}"`, { timeout: 12000 }).toString();
+    const g = JSON.parse(out);
+    const cc = (g && g.success !== false && g.country_code) ? g.country_code : null;
+    const country = (g && g.success !== false && g.country) ? g.country : null;
+    geoCache = { ip, at: Date.now(), cc, country };
+    return { cc, country };
+  } catch (e) {
+    return { cc: geoCache.cc, country: geoCache.country };
+  }
+}
+
 ipcMain.handle('engine-exit-ip', async () => {
   const tr = await exitTrace(1819);
-  return { success: true, ip: tr.ip || null, colo: tr.colo || null, warp: tr.warp || null };
+  const geo = lookupGeo(tr.ip || null);
+  return { success: true, ip: tr.ip || null, colo: tr.colo || null, warp: tr.warp || null, cc: geo.cc, country: geo.country };
 });
 
 ipcMain.handle('proxy-on', async () => await setSystemProxy(true));

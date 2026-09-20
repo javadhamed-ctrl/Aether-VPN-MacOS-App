@@ -260,10 +260,8 @@ body {
       <div class="msg exit-ip" id="exitInfo" style="margin-top:10px;min-height:16px;font-size:12px;color:var(--muted)"></div>
 
       <div class="node-box">
-        <div class="nb-label" data-i18n="connect.node">NODE</div>
-        <select id="nodeSelect" onchange="nodeChanged()">
-          <option value="">Loading servers...</option>
-        </select>
+        <div class="nb-label" data-i18n="connect.region">EXIT REGION</div>
+        <div id="regionValue" style="padding:10px 14px 14px;font-weight:700;color:var(--text);font-size:15px">—</div>
       </div>
 
       <div class="msg" id="connectMsg" data-i18n="connect.msg">Finding a gateway…</div>

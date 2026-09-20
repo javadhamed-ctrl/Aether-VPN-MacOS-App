@@ -2,8 +2,7 @@ const { ipcRenderer } = require('electron');
 
 let state = 'disconnected';
 let page = 'connect';
-let servers = [];
-let selectedNode = null;
+let region = null;
 let trafficTimer = null;
 let lastRx = null, lastTx = null;
 let dl = 0, ul = 0, ping = 0;
@@ -29,7 +28,7 @@ const I18N = {
     'connect.status.error': 'Connection needs attention',
     'connect.tap': 'Tap to secure', 'connect.protected': 'You are protected',
     'connect.download': '↓ Download', 'connect.upload': '↑ Upload', 'connect.ping': 'Ping',
-    'connect.node': 'NODE', 'connect.msg': 'Finding a gateway…',
+    'connect.region': 'EXIT REGION', 'connect.msg': 'Finding a gateway…',
     'msg.selectnode': 'Select a node first', 'msg.starting': 'Starting Aether VPN',
     'msg.scanning': 'Finding a gateway', 'msg.securing': 'Securing your route',
     'msg.disconnecting': 'Disconnecting', 'msg.tap': 'Tap to secure',
@@ -93,7 +92,7 @@ const I18N = {
     'connect.status.error': 'اتصال نیاز به بررسی دارد',
     'connect.tap': 'لمس کنید تا امن شوید', 'connect.protected': 'شما محافظت شده‌اید',
     'connect.download': '↓ دانلود', 'connect.upload': '↑ آپلود', 'connect.ping': 'پینگ',
-    'connect.node': 'گره', 'connect.msg': 'در حال یافتن دروازه…',
+    'connect.region': 'منطقهٔ خروج', 'connect.msg': 'در حال یافتن دروازه…',
     'msg.selectnode': 'ابتدا یک گره انتخاب کنید', 'msg.starting': 'در حال راه‌اندازی',
     'msg.scanning': 'در حال یافتن دروازه', 'msg.securing': 'در حال امن‌سازی مسیر',
     'msg.disconnecting': 'در حال قطع', 'msg.tap': 'لمس کنید تا امن شوید',
@@ -176,7 +175,6 @@ function renderAllDropdowns() { Object.keys(DROPDOWNS).forEach(renderDropdown); 
 
 document.addEventListener('DOMContentLoaded', () => {
   lang = localStorage.getItem('lang') || 'en';
-  loadServers();
   renderAllDropdowns();
   applyStoredSettings();
   showPage('connect');
@@ -224,59 +222,18 @@ function showPage(name) {
   document.getElementById('toolbar-title').textContent = titles[name];
 }
 
-/* ================= Server list (NODE dropdown) ================= */
-async function loadServers() {
-  const sel = document.getElementById('nodeSelect');
-  try {
-    sel.innerHTML = `<option value="">${t('servers.loading')}</option>`;
-    const result = await ipcRenderer.invoke('avpn-servers');
-    servers = parseServers(result.success ? result.output : '');
-    sel.innerHTML = servers.map((s, i) => `<option value="${i}">${s.name} — ${s.location}</option>`).join('');
-    if (servers.length > 0) {
-      const last = localStorage.getItem('lastNode');
-      const idx = servers.findIndex(s => s.name === last);
-      sel.value = idx >= 0 ? idx : 0;
-      selectedNode = servers[sel.value] || servers[0];
-      nodeChanged();
-    }
-  } catch (e) {
-    sel.innerHTML = `<option value="">${t('servers.empty')}</option>`;
-  }
+/* ================= Live exit region ================= */
+function updateRegion() {
+  const el = document.getElementById('regionValue');
+  if (!el) return;
+  if (!region || !region.colo) { el.textContent = '\u2014'; return; }
+  const flag = RegionFlags(region.cc);
+  el.textContent = (flag ? flag + ' ' : '') + region.colo + (region.cc ? ' \u00b7 ' + region.cc : '') + (region.country ? ' \u00b7 ' + region.country : '');
 }
-
-function parseServers(output) {
-  const lines = (output || '').trim().split('\n');
-  const list = [];
-  let inTable = false;
-  for (const line of lines) {
-    if (/ID\s+Name/i.test(line)) { inTable = true; continue; }
-    if (line.includes('---')) continue;
-    if (inTable && line.trim()) {
-      const parts = line.trim().split(/\s{2,}/);
-      if (parts.length >= 4) list.push({ id: parts[0], name: parts[1], location: parts[2], ip: parts[3] });
-    }
-  }
-  if (!list.length) {
-    const fallback = [
-      { id: 1, name: 'Mashhad', location: 'Iran', ip: '10.0.1.1' },
-      { id: 2, name: 'US East', location: 'New York', ip: '10.0.2.1' },
-      { id: 3, name: 'US West', location: 'Los Angeles', ip: '10.0.3.1' },
-      { id: 4, name: 'EU London', location: 'United Kingdom', ip: '10.0.4.1' },
-      { id: 5, name: 'EU Germany', location: 'Frankfurt', ip: '10.0.5.1' },
-      { id: 6, name: 'Asia Tokyo', location: 'Japan', ip: '10.0.6.1' },
-    ];
-    return fallback;
-  }
-  return list;
+function RegionFlags(cc) {
+  if (!cc || cc.length !== 2) return '';
+  return [...cc.toUpperCase()].map(ch => String.fromCodePoint(127397 + ch.charCodeAt(0))).join('');
 }
-
-function nodeChanged() {
-  const sel = document.getElementById('nodeSelect');
-  const idx = parseInt(sel.value);
-  selectedNode = servers[idx] || servers[0];
-  if (selectedNode) localStorage.setItem('lastNode', selectedNode.name);
-}
-function connectNodeId() { return selectedNode ? selectedNode.id : 1; }
 
 /* ================= Connect / Disconnect (real) ================= */
 async function toggleConnect() {
@@ -286,7 +243,6 @@ async function toggleConnect() {
 }
 
 function connect() {
-  if (!selectedNode) { showMsg('msg.selectnode'); return; }
   const socks = (document.getElementById('socksInput').value || '127.0.0.1:1819').trim();
   const mode = localStorage.getItem('mode') || 'vpn';
   setState('starting'); showProgress(true); showMsg('msg.starting');
@@ -305,7 +261,9 @@ function connect() {
     showProgress(false);
     if (r && r.success) {
       exitIp = r.exitIp || null;
+      region = { colo: r.colo || null, cc: r.cc || null, country: r.country || null };
       updateExitInfo();
+      updateRegion();
       let px = { ok: true };
       if (mode !== 'proxy') px = await ipcRenderer.invoke('proxy-on');
       if (px && px.cancelled) {
@@ -328,15 +286,19 @@ async function disconnect() {
   if (mode !== 'proxy') await ipcRenderer.invoke('proxy-off');
   await ipcRenderer.invoke('engine-stop');
   setState('disconnected'); showProgress(false);
-  stopTraffic(); exitIp = null;
+  stopTraffic(); exitIp = null; region = null;
   document.getElementById('exitInfo').textContent = '';
+  document.getElementById('regionValue').textContent = '\u2014';
   showMsg('msg.tap');
 }
 
 async function checkStatus() {
   const result = await ipcRenderer.invoke('engine-status');
-  if (result && result.success && result.running) {
+  if (result && result.running) {
     exitIp = result.exitIp || null;
+    region = { colo: result.colo || null, cc: result.cc || null, country: result.country || null };
+    updateExitInfo();
+    updateRegion();
     setState('connected'); startTraffic();
   }
 }
@@ -402,7 +364,12 @@ async function pollTraffic() {
   const p = await ipcRenderer.invoke('engine-ping');
   if (p && p.success && p.ms) ping = p.ms;
   const e = await ipcRenderer.invoke('engine-exit-ip');
-  if (e && e.success && e.ip) { exitIp = e.ip; updateExitInfo(); }
+  if (e && e.success && e.ip) {
+    exitIp = e.ip;
+    region = { colo: e.colo || (region ? region.colo : null), cc: e.cc || (region ? region.cc : null), country: e.country || (region ? region.country : null) };
+    updateExitInfo();
+    updateRegion();
+  }
   updateMetrics();
 }
 function updateMetrics() {
@@ -665,16 +632,10 @@ window.__verify = async function () {
   setRouting('exclude');
   out.controls.routing = document.querySelector('[data-routing="exclude"]').classList.contains('active');
   setRouting('include');
-  const d = document.getElementById('nodeSelect');
-  out.node.select = d.options.length >= 5;
-  out.node.selected = d.selectedOptions[0].text.includes('—');
 
   setTheme();
   out.controls.theme = document.documentElement.style.getPropertyValue('--bg') === '#0a0f1e';
   document.getElementById('languageInput').value = 'English';
-  out.server.load = await new Promise(res => {
-    loadServers().then(() => res(document.getElementById('nodeSelect').options.length >= 5));
-  });
 
   const btn = document.getElementById('connectBtn');
   localStorage.setItem('mode', 'proxy');
@@ -690,8 +651,10 @@ window.__verify = async function () {
   out.connect.msg = document.getElementById('connectMsg').textContent;
   out.connect.waitedMs = waited;
   out.connect.exitIp = exitIp;
+  out.connect.region = region;
+  out.connect.regionShown = (document.getElementById('regionValue').textContent || '').includes('·');
   out.connect.state = state;
-  out.connect.ok = state === 'connected' && !!exitIp;
+  out.connect.ok = state === 'connected' && !!exitIp && !!region && !!region.colo;
   const t0 = document.getElementById('downloadValue').textContent;
   await new Promise(r => setTimeout(r, 2200));
   out.connect.trafficMoving = t0 !== document.getElementById('downloadValue').textContent
