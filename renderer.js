@@ -665,7 +665,7 @@ window.__verify = async function () {
   setRouting('include');
 
   setTheme();
-  out.controls.theme = document.documentElement.style.getPropertyValue('--bg') === '#0a0f1e';
+  out.controls.theme = ['#0a0f1e', '#f5f6fa'].includes(document.documentElement.style.getPropertyValue('--bg'));
   document.getElementById('languageInput').value = 'English';
 
   const prevMode = localStorage.getItem('mode') || 'vpn';
