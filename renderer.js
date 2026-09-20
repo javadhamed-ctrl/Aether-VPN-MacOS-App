@@ -242,11 +242,11 @@ function updateRouting() {
   if (mode === 'proxy') {
     el.textContent = lang === 'fa' ? 'SOCKS فقط: اپلیکیشن‌ها باید به 127.0.0.1:1819 اشاره کنند' : 'SOCKS only: point apps at 127.0.0.1:1819';
     el.className = 'msg route-info warn';
-  } else if (routing && routing.socks) {
-    el.textContent = lang === 'fa' ? 'مسیردهی سیستم: روشن · کل مک از تونل رد می‌شود' : 'System routing: ON · whole macOS goes through the tunnel';
+  } else if (routing && routing.socks && routing.v6off) {
+    el.textContent = lang === 'fa' ? 'مسیردهی سیستم: روشن · v4+v6 از تونل می‌رود' : 'System routing: ON (v4+v6) · leaked IPv6 blocked';
     el.className = 'msg route-info ok';
   } else {
-    el.textContent = lang === 'fa' ? 'مسیردهی سیستم خاموش — دوباره Connect بزن' : 'System routing OFF — press Connect again';
+    el.textContent = lang === 'fa' ? 'مسیردهی سیستم خاموش (یا نشت IPv6) — دوباره Connect بزن' : 'System routing OFF / IPv6 leak — press Connect again';
     el.className = 'msg route-info warn';
   }
 }

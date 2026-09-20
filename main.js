@@ -250,6 +250,16 @@ function runElevated(cmd) {
   });
 }
 
+let v6PriorSaved = null;
+
+function getV6(svc) {
+  try {
+    const o = execSync(`networksetup -getinfo "${svc}"`, { timeout: 10000 }).toString();
+    const m = o.match(/^IPv6 Configuration:\s*(Automatic|Off|Manual)\s*$/im);
+    return m ? m[1] : 'Automatic';
+  } catch (e) { return 'Automatic'; }
+}
+
 async function proxyState() {
   const svc = serviceName();
   const g = {};
@@ -260,6 +270,7 @@ async function proxyState() {
       g[k] = /^Enabled: Yes/im.test(o) && /Server:\s*127\.0\.0\.1/.test(o) && /Port:\s*1819/.test(o);
     } catch (e) { g[k] = false; }
   }
+  g.v6off = getV6(svc) === 'Off';
   return g;
 }
 
@@ -267,19 +278,29 @@ async function setSystemProxy(on) {
   const svc = serviceName();
   const s = "'" + svc + "'";
   const st = await proxyState();
-  const desired = on ? st.web && st.secure && st.socks : !(st.web || st.secure || st.socks);
-  if (desired) return { ok: true, already: true, elevated: false }; // skip dialog, state already correct
-  const cmds = on
-    ? [
-        `networksetup -setwebproxy ${s} 127.0.0.1 1819`,
-        `networksetup -setsecurewebproxy ${s} 127.0.0.1 1819`,
-        `networksetup -setsocksfirewallproxy ${s} 127.0.0.1 1819`,
-      ]
-    : [
-        `networksetup -setwebproxystate ${s} off`,
-        `networksetup -setsecurewebproxystate ${s} off`,
-        `networksetup -setsocksfirewallproxystate ${s} off`,
-      ];
+  const needProxy = on ? !(st.web && st.secure && st.socks) : (st.web || st.secure || st.socks);
+  const curV6 = getV6(svc);
+  const cmds = [];
+  if (needProxy) {
+    cmds.push(...(on
+      ? [
+          `networksetup -setwebproxy ${s} 127.0.0.1 1819`,
+          `networksetup -setsecurewebproxy ${s} 127.0.0.1 1819`,
+          `networksetup -setsocksfirewallproxy ${s} 127.0.0.1 1819`,
+        ]
+      : [
+          `networksetup -setwebproxystate ${s} off`,
+          `networksetup -setsecurewebproxystate ${s} off`,
+          `networksetup -setsocksfirewallproxystate ${s} off`,
+        ]));
+  }
+  if (on) {
+    if (curV6 !== 'Off') { v6PriorSaved = curV6; cmds.push(`networksetup -setv6off ${s}`); }
+  } else {
+    if (v6PriorSaved && v6PriorSaved !== curV6) cmds.push(`networksetup -setv6${v6PriorSaved.toLowerCase()} ${s}`);
+    v6PriorSaved = null;
+  }
+  if (!cmds.length) return { ok: true, already: true, elevated: false }; // no dialog needed
   // try unprivileged first; fall back to admin
   try {
     execSync(cmds.join(' && '), { stdio: 'ignore', timeout: 15000 });
