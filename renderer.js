@@ -9,6 +9,8 @@ let lastRx = null, lastTx = null;
 let dl = 0, ul = 0, ping = 0;
 let lang = 'en';
 let lastMsgKey = null;
+let exitIp = null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 function isTunnelActive(output) {
   return !!output && !/disconnect/i.test(output) && /\bconnected\b|active|tunnel active/i.test(output);
 }
@@ -285,44 +287,56 @@ async function toggleConnect() {
 
 function connect() {
   if (!selectedNode) { showMsg('msg.selectnode'); return; }
+  const socks = (document.getElementById('socksInput').value || '127.0.0.1:1819').trim();
+  const mode = localStorage.getItem('mode') || 'vpn';
   setState('starting'); showProgress(true); showMsg('msg.starting');
-  setTimeout(() => { setState('scanning'); showMsg('msg.scanning'); }, 900);
-  setTimeout(() => { setState('securing'); showMsg('msg.securing'); }, 1800);
+  setTimeout(() => { setState('scanning'); showMsg('msg.scanning'); }, 700);
+  setTimeout(() => { setState('securing'); showMsg('msg.securing'); }, 1400);
   setTimeout(async () => {
-    const result = await ipcRenderer.invoke('avpn-connect', connectNodeId());
-    if (result && result.success) {
-      const st = await ipcRenderer.invoke('avpn-status');
-      const active = st && st.success && isTunnelActive(st.output);
-      if (active) {
-        setState('connected');
-        const last = (result.output || '').split('\n').filter(l => l.trim()).pop() || t('msg.connected');
-        showRawMsg(last);
-        startTraffic();
-      } else {
-        setState('error');
-        const last = (result.output || '').split('\n').filter(l => l.trim()).pop() || t('tunnel.error');
-        showRawMsg(last);
+    const settings = {
+      protocol: document.getElementById('protocolInput').value,
+      scan: document.getElementById('scanInput').value,
+      transport: document.getElementById('transportInput').value,
+      ip: document.getElementById('ipInput').value,
+      obfuscation: document.getElementById('obfuscationInput').value,
+      socks
+    };
+    const r = await ipcRenderer.invoke('engine-start', settings);
+    showProgress(false);
+    if (r && r.success) {
+      exitIp = r.exitIp || null;
+      updateExitInfo();
+      let px = { ok: true };
+      if (mode !== 'proxy') px = await ipcRenderer.invoke('proxy-on');
+      if (px && px.cancelled) {
+        toast('System proxy needs admin — enable SOCKS 127.0.0.1:1819 in Network settings');
       }
+      setState('connected');
+      showRawMsg('Exit ' + (exitIp || '') + ' · ' + (r.colo || '') + ' · warp=' + (r.warp || r.warp === 'on' ? 'on' : 'off'));
+      startTraffic();
     } else {
       setState('error');
-      showMsg('msg.connectfailed');
-      const err = result && result.error ? result.error : '';
-      showRawMsg((result && result.output || err || t('tunnel.error')) .trim().split('\n').pop());
+      const tail = (r && r.logTail) ? r.logTail.trim().split('\n').pop() : t('msg.connectfailed');
+      showRawMsg(tail);
     }
-    showProgress(false);
-  }, 2700);
+  }, 2100);
 }
 
 async function disconnect() {
   setState('disconnecting'); showProgress(true); showMsg('msg.disconnecting');
-  const result = await ipcRenderer.invoke('avpn-disconnect');
+  const mode = localStorage.getItem('mode') || 'vpn';
+  if (mode !== 'proxy') await ipcRenderer.invoke('proxy-off');
+  await ipcRenderer.invoke('engine-stop');
   setState('disconnected'); showProgress(false);
-  stopTraffic(); showMsg('msg.tap');
+  stopTraffic(); exitIp = null;
+  document.getElementById('exitInfo').textContent = '';
+  showMsg('msg.tap');
 }
 
 async function checkStatus() {
-  const result = await ipcRenderer.invoke('avpn-status');
-  if (result && result.success && isTunnelActive(result.output)) {
+  const result = await ipcRenderer.invoke('engine-status');
+  if (result && result.success && result.running) {
+    exitIp = result.exitIp || null;
     setState('connected'); startTraffic();
   }
 }
@@ -372,23 +386,33 @@ function stopTraffic() {
   document.getElementById('metricsBox').classList.add('hidden');
 }
 async function pollTraffic() {
-  const r = await ipcRenderer.invoke('avpn-traffic');
-  if (r && r.success) {
+  const r = await ipcRenderer.invoke('engine-traffic');
+  if (r && r.success && r.active) {
     if (lastRx === null) { lastRx = r.rx; lastTx = r.tx; }
     dl = (r.rx - lastRx) / 1048576;
     ul = (r.tx - lastTx) / 1048576;
     if (dl < 0) dl = 0;
     if (ul < 0) ul = 0;
     lastRx = r.rx; lastTx = r.tx;
+  } else if (r && r.success && !r.active && state === 'connected') {
+    stopTraffic();
+    setState('error');
+    showMsg('tunnel.error');
   }
-  const p = await ipcRenderer.invoke('avpn-ping', selectedNode ? selectedNode.ip : '');
+  const p = await ipcRenderer.invoke('engine-ping');
   if (p && p.success && p.ms) ping = p.ms;
+  const e = await ipcRenderer.invoke('engine-exit-ip');
+  if (e && e.success && e.ip) { exitIp = e.ip; updateExitInfo(); }
   updateMetrics();
 }
 function updateMetrics() {
   document.getElementById('downloadValue').textContent = dl.toFixed(2) + ' MB';
   document.getElementById('uploadValue').textContent = ul.toFixed(2) + ' MB';
   document.getElementById('pingValue').textContent = (ping ? ping + ' ms' : '--');
+}
+function updateExitInfo() {
+  const el = document.getElementById('exitInfo');
+  if (el) el.textContent = exitIp ? (lang === 'fa' ? 'آی‌پی خروجی: ' : 'Exit IP: ') + exitIp : '';
 }
 
 /* ================= Configurations ================= */
@@ -653,14 +677,21 @@ window.__verify = async function () {
   });
 
   const btn = document.getElementById('connectBtn');
+  localStorage.setItem('mode', 'proxy');
   btn.click();
-  await new Promise(r => setTimeout(r, 4100));
+  let waited = 0;
+  while (state === 'starting' || state === 'scanning' || state === 'securing') {
+    await new Promise(r => setTimeout(r, 500));
+    waited += 500;
+    if (waited > 50000) break;
+  }
   out.connect.status = document.getElementById('statusText').textContent;
   out.connect.orb = document.getElementById('orbLabel').textContent;
   out.connect.msg = document.getElementById('connectMsg').textContent;
-  out.connect.expectedError = !!document.getElementById('connectMsg').textContent.match(/not permitted|Error|error|root|admin|permission/i);
+  out.connect.waitedMs = waited;
+  out.connect.exitIp = exitIp;
   out.connect.state = state;
-  out.connect.ok = state === 'error' && out.connect.expectedError;
+  out.connect.ok = state === 'connected' && !!exitIp;
   const t0 = document.getElementById('downloadValue').textContent;
   await new Promise(r => setTimeout(r, 2200));
   out.connect.trafficMoving = t0 !== document.getElementById('downloadValue').textContent
