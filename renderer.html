@@ -5,109 +5,488 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aether VPN</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+:root {
+  --bg: #0a0f1e;
+  --surface: #111827;
+  --surface2: #0d1525;
+  --border: rgba(255,255,255,0.08);
+  --text: #e7eef8;
+  --muted: #6b7280;
+  --blue: #4f7cff;
+  --blue600: #3b6cff;
+  --accent: #667eea;
+}
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: linear-gradient(135deg, #0a0a2e 0%, #1a1a4e 50%, #0a0a2e 100%);
-  color: #e0e0e0;
-  min-height: 100vh;
-}
-.header {
-  background: rgba(255,255,255,0.05);
-  padding: 16px 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  height: 100vh;
+  overflow: hidden;
 }
-.header h1 {
-  font-size: 20px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* ===== Sidebar navigation (drawer) ===== */
+#drawer {
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  flex-shrink: 0;
 }
-.status-badge { padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-.status-connected { background: #10b981; color: #fff; }
-.status-disconnected { background: #ef4444; color: #fff; }
-.status-unknown { background: #6b7280; color: #fff; }
-.main { padding: 24px; max-width: 1000px; margin: 0 auto; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-.card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  padding: 20px;
+#drawer .app-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 12px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
 }
-.card h2 { font-size: 14px; color: #a0a0a0; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
-.server-list { max-height: 250px; overflow-y: auto; }
-.server-item {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 14px; margin: 3px 0; background: rgba(255,255,255,0.03);
-  border-radius: 8px; cursor: pointer; transition: all 0.2s;
+#drawer .app-logo .logo-ic { width: 36px; height: 36px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), #764ba2); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+#drawer .app-logo .logo-txt { font-weight: 700; font-size: 15px; }
+#drawer .app-logo .logo-sub { font-size: 10px; color: var(--muted); }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; border-radius: 10px;
+  color: var(--muted); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all .15s;
+  margin: 2px 0;
 }
-.server-item:hover { background: rgba(102, 126, 234, 0.2); }
-.server-item.selected { background: rgba(102, 126, 234, 0.4); border: 1px solid #667eea; }
-.server-name { font-weight: 600; font-size: 14px; }
-.server-region { font-size: 11px; color: #888; }
-.btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s; width: 100%; }
-.btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
-.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
-.btn-danger { background: #ef4444; color: #fff; }
-.btn-danger:hover { background: #dc2626; }
-.btn-secondary { background: rgba(255,255,255,0.1); color: #e0e0e0; }
-.btn-secondary:hover { background: rgba(255,255,255,0.15); }
-.btn-green { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
-.login-section { margin-top: 8px; }
-.login-input { width: 100%; padding: 10px 14px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 8px; outline: none; }
-.login-input:focus { border-color: #667eea; }
-.log-row { padding: 6px 10px; margin: 3px 0; background: rgba(0,0,0,0.2); border-radius: 5px; font-family: 'SF Mono', monospace; font-size: 11px; color: #a0a0a0; max-height: 180px; overflow-y: auto; }
-#connectBtn { background: linear-gradient(135deg, #10b981, #059669); margin-top: 10px; }
-#connectBtn.connected { background: linear-gradient(135deg, #ef4444, #dc2626); }
-.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
-.settings-label { color: #a0a0a0; font-size: 13px; }
-.toggle { width: 40px; height: 22px; background: rgba(255,255,255,0.1); border-radius: 11px; cursor: pointer; position: relative; transition: background 0.3s; }
-.toggle.active { background: linear-gradient(135deg, #667eea, #764ba2); }
-.toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.3s; }
-.toggle.active::after { transform: translateX(18px); }
-.info-bar { text-align: center; padding: 8px; color: #666; font-size: 11px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 16px; }
+.nav-item svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+.nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+.nav-item.active { background: rgba(79,124,255,0.15); color: var(--text); }
+#drawer .drawer-footer { margin-top: auto; padding: 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); display:flex; align-items:center; gap:8px; cursor:pointer; }
+#drawer .drawer-footer svg { width:18px; height:18px; fill: currentColor; }
+#drawer .drawer-footer:hover { color: var(--text); }
+
+/* ===== Main content ===== */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#toolbar {
+  height: 52px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  position: relative; flex-shrink: 0;
+}
+#toolbar h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.08em; }
+#toolbar .tb-actions { position: absolute; right: 14px; display: flex; gap: 6px; }
+.tb-btn { width: 34px; height: 34px; border-radius: 8px; background: transparent; border: none; color: var(--muted); cursor: pointer; display:flex; align-items:center; justify-content:center; }
+.tb-btn svg { width:18px; height:18px; fill:currentColor; }
+.tb-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+.page { flex: 1; overflow-y: auto; display: none; padding: 24px; }
+.page.active { display: block; }
+
+/* ===== Connect orb ===== */
+.connect-wrap { max-width: 440px; margin: 0 auto; text-align: center; padding-top: 8px; }
+.orb {
+  width: 250px; height: 250px; margin: 0 auto; position: relative;
+  border-radius: 50%; cursor: pointer;
+  border: none; outline: none;
+  background: radial-gradient(circle at 30% 30%, rgba(79,124,255,0.45), rgba(20,25,40,0.9));
+  box-shadow: 0 0 0 8px rgba(79,124,255,0.12), 0 0 40px rgba(79,124,255,0.25), inset 0 0 30px rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .3s;
+  color: #fff;
+}
+.orb:hover { box-shadow: 0 0 0 10px rgba(79,124,255,0.2), 0 0 60px rgba(79,124,255,0.4), inset 0 0 30px rgba(0,0,0,0.5); }
+.orb.connected { background: radial-gradient(circle at 30% 30%, rgba(16,185,129,0.6), rgba(10,40,30,0.95)); box-shadow: 0 0 0 8px rgba(16,185,129,0.15), 0 0 50px rgba(16,185,129,0.5), inset 0 0 30px rgba(0,0,0,0.4); }
+.orb .orb-label { font-size: 20px; font-weight: 800; letter-spacing: 0.08em; }
+.status-pill { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 18px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.off { background: #ef4444; }
+.dot.on { background: #10b981; box-shadow: 0 0 8px #10b981; }
+.status-text { font-size: 14px; font-weight: 700; }
+.tap-hint { margin-top: 22px; color: var(--muted); font-size: 13px; }
+
+/* Traffic / ping / node metrics */
+.metrics { display: flex; gap: 10px; margin-top: 26px; }
+.metric { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 14px 10px; }
+.metric .m-label { font-size: 10px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; }
+.metric .m-value { font-size: 20px; font-weight: 700; margin-top: 6px; }
+.metric .m-value.blue { color: var(--blue); }
+.node-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; margin-top: 14px; text-align: left; }
+.node-box .nb-label { font-size: 10px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; padding: 12px 14px 4px; }
+.node-box select {
+  width: 100%; background: transparent; border: none; outline: none;
+  color: var(--text); font-size: 15px; font-weight: 600;
+  padding: 4px 14px 14px; cursor: pointer; -webkit-appearance: none;
+  padding-right: 38px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center;
+}
+.node-box select option { background: var(--surface); color: var(--text); }
+.progress-area { margin-top: 16px; min-height: 20px; }
+.progress { width: 100%; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; display: none; }
+.progress .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #764ba2); animation: grow 0.4s ease forwards; }
+.msg { margin-top: 16px; color: var(--muted); font-size: 13px; min-height: 22px; }
+
+/* ===== Cards (configurations / settings) ===== */
+.section-title { font-size: 24px; font-weight: 700; color: var(--text); }
+.section-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.field { margin-top: 22px; }
+.field-label { font-size: 15px; font-weight: 700; color: var(--text); }
+.field-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.group { display: flex; margin-top: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.group button { flex: 1; padding: 14px 4px; background: transparent; border: none; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; }
+.group button.active { background: rgba(79,124,255,0.2); color: #fff; }
+.select-styled {
+  width: 100%; margin-top: 10px; padding: 15px 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+  color: var(--text); font-size: 15px; font-weight: 500; cursor: pointer; outline: none;
+  -webkit-appearance: none; padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center;
+}
+.select-styled option { background: var(--surface); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding: 4px 0; }
+.switch-row .sw-txt { font-size: 15px; color: var(--text); }
+.switch-row .sw-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.switch { width: 44px; height: 26px; border-radius: 13px; background: rgba(255,255,255,0.12); position: relative; cursor: pointer; flex-shrink: 0; transition: background .25s; }
+.switch::after { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: transform .25s; }
+.switch.on { background: var(--blue600); }
+.switch.on::after { transform: translateX(18px); }
+.divider { height: 1px; background: var(--border); margin: 26px 0; }
+.action-btn { width: 100%; padding: 14px; margin-top: 14px; background: rgba(79,124,255,0.15); border: none; border-radius: 12px; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; }
+.action-btn:hover { background: rgba(79,124,255,0.25); }
+.action-btn.ghost { background: transparent; border: 1px solid var(--border); }
+.text-btn { background: none; border: none; color: var(--accent); font-size: 13px; font-weight: 600; cursor: pointer; padding: 12px 0; display: block; text-align: left; }
+.hidden { display: none !important; }
+.info-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+.info-row .k { color: var(--muted); }
+.info-row .v { font-weight: 700; }
+.telegram-card { display: flex; align-items: center; gap: 14px; margin-top: 20px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.04); cursor: pointer; }
+.telegram-card:hover { background: rgba(255,255,255,0.08); }
+.telegram-card .tg-ic { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #2aabee, #229ed9); display:flex; align-items:center; justify-content:center; flex-shrink: 0; }
+.telegram-card .tg-txt { font-size: 14px; font-weight: 700; }
+.telegram-card .tg-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* About */
+.about-wrap { text-align: center; max-width: 420px; margin: 0 auto; padding-top: 20px; }
+.about-logo { width: 68px; height: 68px; margin: 0 auto; border-radius: 16px; background: linear-gradient(135deg, var(--accent), #764ba2); display: flex; align-items: center; justify-content: center; font-size: 32px; }
+.about-wrap h2 { margin-top: 14px; font-size: 22px; }
+.about-wrap .ver { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.link-list { text-align: left; margin-top: 30px; }
+.link-item { padding: 8px 0; }
+.link-item .t { font-weight: 700; font-size: 14px; color: var(--text); }
+.link-item .d { font-size: 13px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.link-item a { color: var(--blue); text-decoration: none; word-break: break-all; }
+#toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface); border: 1px solid var(--border); padding: 10px 18px; border-radius: 10px; font-size: 13px; opacity: 0; transition: all .3s; pointer-events: none; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
 </style>
 </head>
 <body>
-<div class="header">
-  <h1>🛡️ Aether VPN</h1>
-  <span id="statusBadge" class="status-badge status-unknown">Disconnected</span>
-</div>
-<div class="main">
-  <div class="grid">
-    <div class="card">
-      <h2>Servers</h2>
-      <div id="serverList" class="server-list">Loading servers...</div>
-    </div>
-    <div class="card">
-      <h2>Quick Connect</h2>
-      <div class="login-section">
-        <input type="email" id="emailInput" class="login-input" placeholder="Enter your email...">
-        <button class="btn btn-secondary" onclick="doLogin()" style="margin-bottom:8px">Login</button>
-        <button id="connectBtn" class="btn btn-green" onclick="toggleConnect()">Connect</button>
-      </div>
-      <div style="margin-top:14px">
-        <button class="btn btn-secondary" onclick="doKeys()" style="margin-bottom:6px">Generate Keys</button>
-        <button class="btn btn-secondary" onclick="doStatus()">Check Status</button>
-      </div>
+<div id="drawer">
+  <div class="app-logo">
+    <div class="logo-ic">🛡️</div>
+    <div>
+      <div class="logo-txt">Aether VPN</div>
+      <div class="logo-sub">v2.1.1</div>
     </div>
   </div>
-  <div class="card">
-    <h2>Activity Log</h2>
-    <div id="logArea" class="log-row">Waiting for commands...</div>
+  <div class="nav-item active" data-page="connect" onclick="showPage('connect')">
+    <svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+    Connect
   </div>
-  <div class="card">
-    <h2>Settings</h2>
-    <div class="settings-row"><span class="settings-label">Auto-connect</span><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
-    <div class="settings-row"><span class="settings-label">Kill switch</span><div class="toggle active" onclick="this.classList.toggle('active')"></div></div>
-    <div class="settings-row"><span class="settings-label">DNS blocking</span><div class="toggle" onclick="this.classList.toggle('active')"></div></div>
+  <div class="nav-item" data-page="configurations" onclick="showPage('configurations')">
+    <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-8V7h4v2h-4v2h2V9h4V7h-4V5h-2z"/></svg>
+    Configurations
   </div>
-  <div class="info-bar">Aether VPN v3.8-beta.2 | Built for macOS | Powered by Electron</div>
+  <div class="nav-item" data-page="settings" onclick="showPage('settings')">
+    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+    Settings
+  </div>
+  <div class="nav-item" data-page="about" onclick="showPage('about')">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+    About
+  </div>
+  <div class="drawer-footer" onclick="openTelegram()">
+    <svg viewBox="0 0 24 24"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+    Firstham on Telegram
+  </div>
 </div>
+
+<div id="main">
+  <div id="toolbar">
+    <h1 id="toolbar-title">Aethon VPN</h1>
+    <div class="tb-actions">
+      <button class="tb-btn" onclick="openTelegram()" title="Telegram">
+        <svg viewBox="0 0 24 24"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== CONNECT PAGE ===== -->
+  <div class="page active" id="page-connect">
+    <div class="connect-wrap">
+      <button class="orb" id="connectBtn" onclick="toggleConnect()">
+        <span class="orb-label" id="orbLabel">CONNECT</span>
+      </button>
+      <div class="status-pill">
+        <div class="dot off" id="statusDot"></div>
+        <span class="status-text" id="statusText">Aether Ready</span>
+      </div>
+      <div class="tap-hint" id="tapHint">Tap to secure</div>
+
+      <div class="progress-area">
+        <div class="progress"><div class="bar" id="progressBar"></div></div>
+      </div>
+
+      <div class="metrics hidden" id="metricsBox">
+        <div class="metric">
+          <div class="m-label">↓ Download</div>
+          <div class="m-value" id="downloadValue">--</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">↑ Upload</div>
+          <div class="m-value" id="uploadValue">--</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">Ping</div>
+          <div class="m-value blue" id="pingValue">--</div>
+        </div>
+      </div>
+
+      <div class="node-box">
+        <div class="nb-label">NODE</div>
+        <select id="nodeSelect" onchange="nodeChanged()">
+          <option value="">Loading servers...</option>
+        </select>
+      </div>
+
+      <div class="msg" id="connectMsg">Finding a gateway…</div>
+    </div>
+  </div>
+
+  <!-- ===== CONFIGURATIONS PAGE ===== -->
+  <div class="page" id="page-configurations">
+    <div class="section-title">Configurations</div>
+    <div class="section-sub">Connection mode, protocol and tunnel behaviour</div>
+
+    <div class="field">
+      <div class="field-label">Connection mode</div>
+      <div class="group" id="modeGroup">
+        <button data-mode="vpn" class="active" onclick="setMode('vpn')">Device VPN</button>
+        <button data-mode="proxy" onclick="setMode('proxy')">SOCKS5 proxy</button>
+        <button data-mode="smart" onclick="setMode('smart')">Smart Connect</button>
+      </div>
+      <div class="field-sub" id="modeSummary">Test every protocol and choose the fastest reliable route.</div>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Protocol</div>
+      <select class="select-styled" id="protocolInput" onchange="saveSettings()">
+        <option>MASQUE</option>
+        <option>WireGuard</option>
+        <option selected>gool / WARP-in-WARP</option>
+        <option>Smart Connect</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <div class="field-label">Scan mode</div>
+      <select class="select-styled" id="scanInput" onchange="saveSettings()">
+        <option>Balanced</option>
+        <option>Turbo (recommended)</option>
+        <option>Thorough</option>
+        <option>Stealth</option>
+        <option>Ironclad verification</option>
+      </select>
+    </div>
+
+    <div class="field" id="transportField">
+      <div class="field-label">MASQUE transport</div>
+      <select class="select-styled" id="transportInput" onchange="saveSettings()">
+        <option>HTTP/3 (QUIC)</option>
+        <option selected>HTTP/2 (TCP, recommended)</option>
+      </select>
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="sw-txt">Auto Reconnect</div>
+        <div class="sw-sub">Recover automatically after a temporary connection failure</div>
+      </div>
+      <div class="switch on" id="reconnectSwitch" onclick="toggleSwitch(this,'quickReconnect')"></div>
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="sw-txt">Auto connect at start</div>
+        <div class="sw-sub">Connect with the saved configuration when Aether opens</div>
+      </div>
+      <div class="switch" id="autoConnectSwitch" onclick="toggleSwitch(this,'autoConnectAtStart')"></div>
+    </div>
+
+    <div class="switch-row">
+      <div>
+        <div class="sw-txt">Connection from LAN</div>
+        <div class="sw-sub" id="lanSub">Disabled</div>
+      </div>
+      <div class="switch" id="lanSwitch" onclick="toggleSwitch(this,'lanEnabled')"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="switch-row">
+      <div>
+        <div class="sw-txt" style="font-size:17px">Split Tunneling</div>
+        <div class="sw-sub">Choose which apps use the Aether connection.</div>
+      </div>
+      <div class="switch" id="splitSwitch" onclick="toggleSwitch(this,'splitEnabled')"></div>
+    </div>
+    <div id="splitContainer" class="hidden">
+      <div class="field">
+        <div class="field-label">Routing mode</div>
+        <div class="group" id="routingGroup">
+          <button data-routing="include" class="active" onclick="setRouting('include')">Include Apps</button>
+          <button data-routing="exclude" onclick="setRouting('exclude')">Exclude Apps</button>
+        </div>
+        <div class="field-sub" id="selectedAppsCount">0 apps selected</div>
+      </div>
+      <button class="action-btn" onclick="toast('App picker (simulated)')">Select Apps</button>
+    </div>
+
+    <button class="text-btn" id="advancedToggle" onclick="toggleAdvanced()">Show advanced ▾</button>
+    <div id="advancedContainer" class="hidden">
+      <div class="field">
+        <div class="field-label">IP scan</div>
+        <select class="select-styled" id="ipInput" onchange="saveSettings()">
+          <option>IPv4 (recommended)</option>
+          <option>IPv6</option>
+          <option>IPv4 + IPv6</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Obfuscation</div>
+        <select class="select-styled" id="obfuscationInput" onchange="saveSettings()">
+          <option>Firewall (recommended)</option>
+          <option>GFW</option>
+          <option selected>Balanced</option>
+          <option>Aggressive</option>
+          <option>Off</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-label">Local SOCKS5 address</div>
+        <input type="text" class="select-styled" id="socksInput" value="127.0.0.1:1819" onchange="saveSettings()">
+      </div>
+      <div class="field">
+        <div class="field-label">Custom endpoint (optional)</div>
+        <input type="text" class="select-styled" id="peerInput" value="" placeholder="optional" onchange="saveSettings()">
+      </div>
+      <div class="field">
+        <div class="field-label">VPN MTU</div>
+        <div class="group" id="mtuModeGroup">
+          <button data-mtu="automatic" class="active" onclick="setMtuMode('automatic')">Automatic</button>
+          <button data-mtu="manual" onclick="setMtuMode('manual')">Manual</button>
+        </div>
+        <input type="number" class="select-styled hidden" id="mtuInput" value="1360" min="1280" max="1500" onchange="saveSettings()">
+        <div class="field-sub" id="mtuSummary">Safe default: 1360</div>
+      </div>
+      <div class="switch-row">
+        <div>
+          <div class="sw-txt">Private DNS routing</div>
+          <div class="sw-sub">Route DNS requests through the tunnel</div>
+        </div>
+        <div class="switch on" id="dnsSwitch" onclick="toggleSwitch(this,'dnsLeak')"></div>
+      </div>
+      <div class="switch-row">
+        <div>
+          <div class="sw-txt">Fail closed on tunnel errors</div>
+          <div class="sw-sub">Keep VPN routes blocked if Aether unexpectedly stops</div>
+        </div>
+        <div class="switch" id="killswitchSwitch" onclick="toggleSwitch(this,'killSwitch')"></div>
+      </div>
+      <button class="text-btn" onclick="resetDefaults()">Reset defaults</button>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS PAGE ===== -->
+  <div class="page" id="page-settings">
+    <div class="section-title">Settings</div>
+    <div class="section-sub">How should the Aether app behave and look?</div>
+
+    <div class="field">
+      <div class="field-label">Theme</div>
+      <select class="select-styled" id="themeInput" onchange="setTheme()">
+        <option>System default</option>
+        <option>Light</option>
+        <option selected>Dark</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="field-label">Language</div>
+      <select class="select-styled" id="languageInput" onchange="saveSettings()">
+        <option selected>English</option>
+        <option>فارسی</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+    <div class="field-label">Notifications</div>
+    <div class="field-sub">Manage VPN and update notifications</div>
+    <button class="action-btn" onclick="toast('Notification settings opened')">Manage Notifications</button>
+
+    <div style="margin-top:24px" class="field-label">Quick Settings</div>
+    <div class="field-sub">Add the Aether VPN tile for fast connect and disconnect</div>
+    <button class="action-btn" onclick="toast('Quick Settings tile request opened')">Add Aether VPN Tile</button>
+
+    <div class="divider"></div>
+    <div class="field-label">Aether VPN Updates</div>
+    <div class="info-row"><span class="k">Current version</span><span class="v">v2.1.1</span></div>
+    <div class="info-row"><span class="k">Latest available version</span><span class="v" id="latestVersion">Not checked</span></div>
+    <div class="info-row"><span class="k">Update status</span><span class="v" id="updateStatus">Not checked</span></div>
+    <div class="progress hidden" style="height:6px;margin-top:12px"><div class="bar" id="updateProgress"></div></div>
+    <div class="switch-row">
+      <div>
+        <div class="sw-txt">Automatic updates</div>
+        <div class="sw-sub">Check for and download verified updates automatically over any available network</div>
+      </div>
+      <div class="switch on" id="autoUpdateSwitch" onclick="toggleSwitch(this,'autoUpdate')"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="action-btn hidden" id="downloadUpdateBtn" onclick="toast('Download started')">Download update</button>
+      <button class="action-btn ghost" onclick="checkUpdates()">Check for updates</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="field-label">Backup &amp; Restore</div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="action-btn" onclick="toast('Settings backed up')">Backup settings</button>
+      <button class="action-btn ghost" onclick="toast('Restore settings')">Restore settings</button>
+    </div>
+
+    <div class="telegram-card" onclick="openTelegram()">
+      <div class="tg-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg></div>
+      <div>
+        <div class="tg-txt">Firstham on Telegram</div>
+        <div class="tg-sub">Updates, tips, and new releases from @hamvex.</div>
+      </div>
+    </div>
+    <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:18px">v2.1.1</div>
+  </div>
+
+  <!-- ===== ABOUT PAGE ===== -->
+  <div class="page" id="page-about">
+    <div class="about-wrap">
+      <div class="about-logo">🛡️</div>
+      <h2>Aether VPN</h2>
+      <div class="ver">v2.1.1</div>
+      <div class="link-list">
+        <div class="link-item">
+          <div class="t">Original Project: Aether</div>
+          <div class="d">Based on the original Aether project by CluvexStudio.</div>
+          <div class="d"><a href="#" onclick="return false" style="pointer-events:none">https://github.com/CluvexStudio/Aether</a></div>
+        </div>
+        <div class="link-item" style="margin-top:18px">
+          <div class="t">Application: Aether VPN</div>
+          <div class="d">macOS application/interface developed for Aether.</div>
+          <div class="d"><a href="#" onclick="return false" style="pointer-events:none">https://github.com/javadhamed-ctrl/Aether-VPN-MacOS-App</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
 <script src="renderer.js"></script>
 </body>
 </html>
